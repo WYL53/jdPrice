@@ -9,13 +9,44 @@ import (
 	"text/template"
 	"time"
 
-	"jdPriceShowWeb/model"
-	"jdPriceShowWeb/redisDAO"
-	"jdPriceShowWeb/view"
+	"jdPrice/model"
+	"jdPrice/redisDAO"
+	"jdPrice/view"
 )
 
+var BrandModelMap map[string][]string
 var TargetModels map[string]*model.GoodPrices
 var CurrentData map[string]map[string]*model.JdGood = make(map[string]map[string]*model.JdGood)
+
+func setBrandModelMap(brand, model string) {
+	if _, ok := BrandModelMap[brand]; !ok {
+		models := make([]string, 1)
+		models[0] = model
+		BrandModelMap[brand] = models
+		return
+	}
+	for _, v := range BrandModelMap[brand] {
+		if v == model {
+			return
+		}
+	}
+	BrandModelMap[brand] = append(BrandModelMap[brand], model)
+}
+
+func delBrandModelMap(brand, model string) {
+	models, ok := BrandModelMap[brand]
+	if !ok {
+		return
+	}
+	for i, m := range models {
+		if m == model {
+			newModels := make([]string, len(models)-1)
+			copy(newModels, models[:i])
+			copy(newModels[i:], models[i+1:])
+			BrandModelMap[brand] = newModels
+		}
+	}
+}
 
 func StartHttpServer(prot int) {
 	addr := fmt.Sprintf("0.0.0.0:%d", prot)
@@ -37,42 +68,36 @@ func StartHttpServer(prot int) {
 func IndexServer(w http.ResponseWriter, req *http.Request) {
 	t := template.New("template")       //创建一个模板
 	t, _ = t.Parse(view.TPL_INDEX_PAGE) //解析模板文件
-	models := make([]string, len(TargetModels))
 	i := 0
-	for m := range TargetModels {
-		models[i] = m
-		i++
-	}
-	i = 0
 	prices := make([]*model.GoodPrices, len(TargetModels))
 	for _, v := range TargetModels {
 		prices[i] = v
 		i++
 	}
 	data := struct {
-		Selects []string
+		Selects map[string][]string
 		Prices  []*model.GoodPrices
 	}{
-		Selects: models,
+		Selects: BrandModelMap,
 		Prices:  prices,
 	}
 	t.Execute(w, data) //执行模板的merger操作
 }
 
 func AddModelServer(w http.ResponseWriter, req *http.Request) {
-	modelName := req.FormValue("modelName")
-	standardPrice := req.FormValue("standardPrice")
-	minPrice := req.FormValue("minPrice")
-	maxPrice := req.FormValue("maxPrice")
+	brand := trimSpace(req.FormValue("brand"))
+	modelName := trimSpace(req.FormValue("modelName"))
+	standardPrice := trimSpace(req.FormValue("standardPrice"))
+	minPrice := trimSpace(req.FormValue("minPrice"))
+	maxPrice := trimSpace(req.FormValue("maxPrice"))
 	if _, ok := TargetModels[modelName]; !ok {
-
+		setBrandModelMap(brand, modelName)
 		TargetModels[modelName] = model.NewGoodPrices2(modelName, standardPrice, minPrice, maxPrice)
-
 		err := redisDAO.WriteGoodPrice(modelName, standardPrice, minPrice, maxPrice)
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			err = redisDAO.WriteModel(modelName)
+			err = redisDAO.WriteModel(brand, modelName)
 			if err == nil {
 				w.Write([]byte("添加成功"))
 			}
@@ -83,19 +108,23 @@ func AddModelServer(w http.ResponseWriter, req *http.Request) {
 }
 
 func DelModelServer(w http.ResponseWriter, req *http.Request) {
-	modelName := req.FormValue("modelName")
+	brand := trimSpace(req.FormValue("brand"))
+	modelName := trimSpace(req.FormValue("modelName"))
 	if _, ok := TargetModels[modelName]; ok {
 		delete(TargetModels, modelName)
-		redisDAO.RemoveModel(modelName)
+		delBrandModelMap(brand, modelName)
+		redisDAO.RemoveModel(brand, modelName)
 	}
 	w.Write([]byte("删除成功"))
 }
 
 func UpdatePriceServer(w http.ResponseWriter, req *http.Request) {
-	modelName := req.FormValue("modelName")
-	standardPrice := req.FormValue("standardPrice")
-	minPrice := req.FormValue("minPrice")
-	maxPrice := req.FormValue("maxPrice")
+	//	oldbrand := trimSpace(req.FormValue("oldbrand"))
+	//	brand := trimSpace(req.FormValue("brand"))
+	modelName := trimSpace(req.FormValue("modelName"))
+	standardPrice := trimSpace(req.FormValue("standardPrice"))
+	minPrice := trimSpace(req.FormValue("minPrice"))
+	maxPrice := trimSpace(req.FormValue("maxPrice"))
 	if price, ok := TargetModels[modelName]; ok {
 		sp, err1 := strconv.Atoi(standardPrice)
 		minp, err2 := strconv.Atoi(standardPrice)
@@ -125,7 +154,7 @@ func UpdatePriceServer(w http.ResponseWriter, req *http.Request) {
 
 //价格显示
 func HomeServer(w http.ResponseWriter, req *http.Request) {
-	modelName := req.URL.Query().Get("model")
+	modelName := trimSpace(req.URL.Query().Get("model"))
 	t := template.New("template")      //创建一个模板
 	t, _ = t.Parse(view.TPL_SHOW_PAGE) //解析模板文件
 	data := struct {
@@ -189,4 +218,8 @@ func PriceServer(w http.ResponseWriter, req *http.Request) {
 		Prices: prices,
 	}
 	t.Execute(w, data) //执行模板的merger操作
+}
+
+func trimSpace(s string) string {
+	return strings.TrimSpace(s)
 }
