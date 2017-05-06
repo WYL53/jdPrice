@@ -4,8 +4,8 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 
-	"jdPriceShowWeb/model"
-	"jdPriceShowWeb/redisDAO"
+	"jdPrice/model"
+	"jdPrice/redisDAO"
 )
 
 var writeLoop = true
@@ -18,9 +18,17 @@ func loadShopId() map[string]string {
 	return redisDAO.ReadShopIds()
 }
 
+func loadBrands() map[string][]string {
+	brands := redisDAO.ReadBrands()
+	return redisDAO.ReadModels(brands)
+}
+
 // 格式 id:name
-func loadTargetModel() map[string]*model.GoodPrices {
-	ms := redisDAO.ReadModels()
+func loadTargetModel(brands map[string][]string) map[string]*model.GoodPrices {
+	ms := make([]string, 0)
+	for _, v := range brands {
+		ms = append(ms, v...)
+	}
 	return redisDAO.ReadGoodPrices(ms)
 }
 

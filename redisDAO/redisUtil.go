@@ -7,12 +7,13 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 
-	"jdPriceShowWeb/model"
+	"jdPrice/model"
 )
 
 const (
 	REDIS_HOST                = ":6379"
-	RedisTargetModelSet       = "targetModel"
+	RedisTargetModelSet       = "targetModel_%s"
+	RedisTargetModelSetPre    = "targetModel_"
 	RedisShopIdTable          = "shopIdTable"
 	RedisGoodPriceTableFormat = "goodPriceTable_%s"
 	RedisPriceZSetFormat      = "prices_%s"
@@ -67,44 +68,62 @@ func ReadPrice(goodId string) []string {
 				ret[i] = string(objs[i].([]uint8))
 			}
 		}
-
+	} else {
+		fmt.Println(err)
 	}
 	return ret
 }
 
-func WriteModel(model string) error {
+func ReadBrands() []string {
+	parrent := fmt.Sprintf(RedisTargetModelSet, "*")
+	ss := getKeys(parrent)
+	brands := make([]string, len(ss))
+	for i, v := range ss {
+		brand := v[len(RedisTargetModelSetPre):]
+		brands[i] = brand
+	}
+	return brands
+}
+
+func WriteModel(brand, model string) error {
 	conn := RedisClient.Get()
 	defer conn.Close()
-	_, err := conn.Do("SADD", RedisTargetModelSet, model)
+	key := fmt.Sprintf(RedisTargetModelSet, brand)
+	err := setAddValue(key, model)
 	return err
 }
 
-func ReadModels() []string {
+func ReadModels(brands []string) map[string][]string {
 	conn := RedisClient.Get()
 	defer conn.Close()
-
-	reply, err := conn.Do("SMEMBERS", RedisTargetModelSet)
-	if err == nil {
+	m := make(map[string][]string)
+	for _, brand := range brands {
+		key := fmt.Sprintf(RedisTargetModelSet, brand)
+		reply, err := conn.Do("SMEMBERS", key)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
 		objs, ok := reply.([]interface{})
 		if ok {
-			ret := make([]string, len(objs))
+			models := make([]string, len(objs))
 			for i, v := range objs {
-				ret[i] = string(v.([]uint8))
+				models[i] = string(v.([]uint8))
 			}
-			return ret
+			m[brand] = models
 		}
-
 	}
-	return nil
+	return m
 }
 
-func RemoveModel(model string) {
+func RemoveModel(brand, model string) {
 	conn := RedisClient.Get()
 	defer conn.Close()
-	conn.Do("SREM", RedisTargetModelSet, model)
+	key := fmt.Sprintf(RedisTargetModelSet, brand)
+	conn.Do("SREM", key, model)
 
 	//del good price
-	key := fmt.Sprintf(RedisGoodPriceTableFormat, model)
+	key = fmt.Sprintf(RedisGoodPriceTableFormat, model)
 	conn.Do("DEL", key)
 }
 
@@ -113,7 +132,8 @@ func WiretShopId(id, shopName string) {
 	defer conn.Close()
 
 	_, err := conn.Do("HSET", RedisShopIdTable, id, shopName)
-	if err == nil {
+	if err != nil {
+		fmt.Println(err)
 	}
 }
 
@@ -133,7 +153,8 @@ func ReadShopIds() map[string]string {
 			}
 			return ret
 		}
-
+	} else {
+		fmt.Println(err)
 	}
 	return nil
 }
@@ -155,21 +176,54 @@ func ReadGoodPrices(modelNames []string) map[string]*model.GoodPrices {
 		reply, err := conn.Do("HMGET", key, "standardPrice", "minPrice", "maxPrice")
 		if err == nil {
 			objs, ok := reply.([]interface{})
-			//			fmt.Println(objs, ok)
 			if ok && len(objs) == 3 {
-				//				fmt.Println("fu")
-				sp := string(objs[0].([]uint8))
-				mp := string(objs[1].([]uint8))
-				maxp := string(objs[2].([]uint8))
-				standardPrice, _ := strconv.Atoi(sp)
-				minPrice, _ := strconv.Atoi(mp)
-				maxPrice, _ := strconv.Atoi(maxp)
-				gp := model.NewGoodPrices(modelNames[i], standardPrice, minPrice, maxPrice)
-				ret[modelNames[i]] = gp
+				spb, ok1 := objs[0].([]uint8)
+				if ok1 {
+					sp := string(spb)
+					mp := string(objs[1].([]uint8))
+					maxp := string(objs[2].([]uint8))
 
-				//				return ret
+					standardPrice, _ := strconv.Atoi(sp)
+					minPrice, _ := strconv.Atoi(mp)
+					maxPrice, _ := strconv.Atoi(maxp)
+					gp := model.NewGoodPrices(modelNames[i], standardPrice, minPrice, maxPrice)
+					ret[modelNames[i]] = gp
+				}
+
 			}
 		}
 	}
 	return ret
+}
+
+func getKeys(parrent string) []string {
+	conn := RedisClient.Get()
+	defer conn.Close()
+
+	reply, err := conn.Do("KEYS", parrent)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	lines, err := convStringArray(reply)
+	return lines
+}
+
+func setAddValue(setName, value string) error {
+	conn := RedisClient.Get()
+	defer conn.Close()
+	_, err := conn.Do("SADD", setName, value)
+	return err
+}
+
+func convStringArray(reply interface{}) ([]string, error) {
+	objs, ok := reply.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("not array")
+	}
+	lines := make([]string, len(objs))
+	for i, v := range objs {
+		lines[i] = string(v.([]uint8))
+	}
+	return lines, nil
 }

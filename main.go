@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"jdPriceShowWeb/controller"
-	"jdPriceShowWeb/model"
-	"jdPriceShowWeb/redisDAO"
+	"jdPrice/controller"
+	"jdPrice/model"
+	"jdPrice/redisDAO"
 )
 
 const (
@@ -24,7 +24,8 @@ const (
 var shopIdData map[string]string
 
 func main() {
-	controller.TargetModels = loadTargetModel()
+	controller.BrandModelMap = loadBrands()
+	controller.TargetModels = loadTargetModel(controller.BrandModelMap)
 	shopIdData = loadShopId()
 	fmt.Println("TargetModels:", controller.TargetModels)
 	//	fmt.Println("shopIdData:", shopIdData)
