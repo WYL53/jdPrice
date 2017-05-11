@@ -15,22 +15,26 @@ const TPL_INDEX_PAGE = `
 	<center>
 		<h2>查询</h2>
 		{{range $brand,$models := .Selects }}
-			<select id="mySelect" onchange="window.open(this.options[this.selectedIndex].value)">
-				<option selected>选择{{$brand}}的型号</OPTION> 
-				{{range $_,$v := $models }}
-					<option value ="/jd?model={{$v}}">{{$v}}</option>
-				{{end}}
-			</select>
+			{{ if gt (len $models ) 0 }}
+				<select id="mySelect" onchange="window.open(this.options[this.selectedIndex].value)">
+					<option selected>选择{{$brand}}的型号</OPTION> 
+					{{range $_,$v := $models }}
+						<option value ="/jd?model={{$v}}">{{$v}}</option>
+					{{end}}
+				</select>
+			{{end}}
 		{{end}}
 		<br>
 		<h2>更新</h2>
 		{{range $brand,$models := .Selects }}
-			<select id="myUpdateSelect" onchange="displayPrice(this.options[this.selectedIndex].value)">
-				<option selected>选择{{$brand}}型号</OPTION> 
-				{{range $_,$v := $models }}
-					<option value ="{{$v}}">{{$v}}</option>
-				{{end}}
-			</select>
+			{{ if gt (len $models ) 0 }}
+				<select id="myUpdateSelect" onchange="displayPrice(this.options[this.selectedIndex].value)">
+					<option selected>选择{{$brand}}型号</OPTION> 
+					{{range $_,$v := $models }}
+						<option value ="{{$v}}">{{$v}}</option>
+					{{end}}
+				</select>
+			{{end}}
 		{{end}}
 		<form id="updateForm" >
 			<input type="hidden" type="text" id="modelName" name="modelName"/>
