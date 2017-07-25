@@ -17,7 +17,7 @@ const TPL_INDEX_PAGE = `
 		{{range $brand,$models := .Selects }}
 			{{ if gt (len $models ) 0 }}
 				<select id="mySelect" onchange="window.open(this.options[this.selectedIndex].value)">
-					<option selected>选择{{$brand}}的型号</OPTION> 
+					<option value="no" selected>选择{{$brand}}的型号</OPTION>
 					{{range $_,$v := $models }}
 						<option value ="/jd?model={{$v}}">{{$v}}</option>
 					{{end}}
@@ -119,7 +119,8 @@ const TPL_INDEX_PAGE = `
 			inputSP.value = p.standardPrice
 			inputMinP.value = p.minPrice
 			inputMaxP.value = p.maxPrice
-       } 
+       }
+
 	</script>
 </body>
 

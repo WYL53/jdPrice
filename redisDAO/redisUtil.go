@@ -74,6 +74,7 @@ func ReadPrice(goodId string) []string {
 	return ret
 }
 
+//获取品牌，如美的、小天鹅
 func ReadBrands() []string {
 	parrent := fmt.Sprintf(RedisTargetModelSet, "*")
 	ss := getKeys(parrent)
@@ -85,6 +86,7 @@ func ReadBrands() []string {
 	return brands
 }
 
+//添加品牌、型号
 func WriteModel(brand, model string) error {
 	conn := RedisClient.Get()
 	defer conn.Close()
@@ -93,6 +95,7 @@ func WriteModel(brand, model string) error {
 	return err
 }
 
+//获取某个品牌下的所有型号
 func ReadModels(brands []string) map[string][]string {
 	conn := RedisClient.Get()
 	defer conn.Close()
@@ -116,7 +119,8 @@ func ReadModels(brands []string) map[string][]string {
 	return m
 }
 
-func RemoveModel(brand, model string) {
+//删除型号
+func RemoveModel(brand, model string)  {
 	conn := RedisClient.Get()
 	defer conn.Close()
 	key := fmt.Sprintf(RedisTargetModelSet, brand)
@@ -127,6 +131,7 @@ func RemoveModel(brand, model string) {
 	conn.Do("DEL", key)
 }
 
+//id -> 店名
 func WiretShopId(id, shopName string) {
 	conn := RedisClient.Get()
 	defer conn.Close()
@@ -137,6 +142,7 @@ func WiretShopId(id, shopName string) {
 	}
 }
 
+//id -> 店名
 func ReadShopIds() map[string]string {
 	conn := RedisClient.Get()
 	defer conn.Close()
@@ -159,7 +165,8 @@ func ReadShopIds() map[string]string {
 	return nil
 }
 
-func WriteGoodPrice(model, standardPrice, minPrice, maxPrice string) error {
+//参考价
+func WriteStandardPrice(model, standardPrice, minPrice, maxPrice string) error {
 	conn := RedisClient.Get()
 	defer conn.Close()
 	key := fmt.Sprintf(RedisGoodPriceTableFormat, model)
@@ -167,7 +174,7 @@ func WriteGoodPrice(model, standardPrice, minPrice, maxPrice string) error {
 	return err
 }
 
-func ReadGoodPrices(modelNames []string) map[string]*model.GoodPrices {
+func ReadStandardPrice(modelNames []string) map[string]*model.GoodPrices {
 	conn := RedisClient.Get()
 	defer conn.Close()
 	ret := make(map[string]*model.GoodPrices)

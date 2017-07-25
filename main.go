@@ -7,10 +7,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"jdPrice/controller"
 	"jdPrice/model"
-	"jdPrice/redisDAO"
+	"jdPrice/mediator"
 )
 
 const (
@@ -21,47 +24,59 @@ const (
 
 //var lastData map[string]*JdGood
 
-var shopIdData map[string]string
 
 func main() {
-	controller.BrandModelMap = loadBrands()
-	controller.TargetModels = loadTargetModel(controller.BrandModelMap)
-	shopIdData = loadShopId()
+	brands := loadBrands()
+	mediator.UpdateBrand2Model(brands)
+	mediator.UpdateModelsStandardPrice(loadTargetModel(brands))
+	mediator.UpdatShopId2Name(loadShopId())
 	//	fmt.Println("TargetModels:", controller.BrandModelMap)
 	//	fmt.Println("TargetModels:", controller.TargetModels)
 	//	fmt.Println("shopIdData:", shopIdData)
 	go loop(int(conf.FrequencyOfDay))
 	//	fmt.Println("start http server")
-	controller.StartHttpServer(int(conf.Port))
-}
-
-func loop(frequencyOfDay int) {
-	for model, prices := range controller.TargetModels {
-		//		fmt.Println(model, prices.StandardPrice, prices.MinPrice, prices.MaxPrice)
-		startMession(model, prices.StandardPrice, prices.MinPrice, prices.MaxPrice)
-	}
-	ticlker := time.NewTicker(time.Hour * time.Duration(24) / time.Duration(frequencyOfDay))
-	for _ = range ticlker.C {
-		for model, prices := range controller.TargetModels {
-
-			startMession(model, prices.StandardPrice, prices.MinPrice, prices.MaxPrice)
+	go controller.StartHttpServer(int(conf.Port))
+	exitC := make(chan os.Signal,1)
+	signal.Notify(exitC,syscall.SIGINT,syscall.SIGTERM)
+	for  {
+		select {
+		case <-exitC:
+			fmt.Println("app exit!")
+			os.Exit(0)
 		}
 	}
 }
 
-func startMession(model string, standardPirce int, priceMin int, priceMax int) {
+func loop(frequencyOfDay int) {
+	for model, prices := range mediator.CopyModelsStandardPrice() {
+		startMission(model, prices.StandardPrice, prices.MinPrice, prices.MaxPrice)
+	}
+	ticlker := time.NewTicker(time.Hour * time.Duration(24) / time.Duration(frequencyOfDay))
+	for _ = range ticlker.C {
+		for model, prices := range mediator.CopyModelsStandardPrice() {
+			startMission(model, prices.StandardPrice, prices.MinPrice, prices.MaxPrice)
+		}
+	}
+}
+
+//获取一次数据
+func startMission(model string, standardPirce int, priceMin int, priceMax int) {
 	fmt.Printf("%s %s获取数据。\n", time.Now().Format("2006-01-02 15:04"), model)
 	cmdResp := execCmd("phantomjs", "jd_spider.js", model)
+	if cmdResp == nil{
+		fmt.Printf("%s %s获取数据超时。\n", time.Now().Format("2006-01-02 15:04"), model)
+		return
+	}
 	data := formatData(cmdResp, standardPirce, priceMin, priceMax)
 	//	fmt.Println(data)
 	if data != nil {
-		controller.CurrentData[model] = data
-		redisDAO.WritePrice(data)
+		mediator.UpdateCurrentData(model,data)
 	}
 	fmt.Printf("%s %s获取数据完毕。\n", time.Now().Format("2006-01-02 15:04"), model)
 }
 
-// 店名:商品名:价格评论:其他:href
+// 店名:商品名:价格评论:其他:店铺href：商品href
+//商品href 作为返回的map的key
 func formatData(data *bytes.Buffer, standardPirce, priceMin int, priceMax int) map[string]*model.JdGood {
 	m := make(map[string]*model.JdGood)
 	reader := bufio.NewReader(data)
@@ -72,6 +87,7 @@ func formatData(data *bytes.Buffer, standardPirce, priceMin int, priceMax int) m
 		}
 		ss := strings.Split(string(line), ":")
 		if len(ss) < 6 {
+			fmt.Println("line error :",string(line))
 			continue
 		}
 
@@ -92,27 +108,20 @@ func formatData(data *bytes.Buffer, standardPirce, priceMin int, priceMax int) m
 		shopName := ss[0]
 		shopHref := ss[4]
 		if shopHref != "undefined" {
-			shopIdStartIndex := strings.Index(shopHref, "-")
-			shopIdLastIndex := strings.LastIndex(shopHref, ".")
-			if shopIdStartIndex < shopIdLastIndex {
-				shopId := shopHref[shopIdStartIndex+1 : shopIdLastIndex]
-				if shopName != "京东自营" {
-					if _, ok := shopIdData[shopId]; !ok {
-						shopIdData[shopId] = shopName
-						redisDAO.WiretShopId(shopId, shopName)
-					}
-				} else {
-					shopName = shopIdData[shopId]
+			cacheShopName := mediator.GetShopName(shopHref)
+			if cacheShopName != shopName{
+				if cacheShopName == "京东自营"{
+					mediator.UpdateShopName(shopHref,shopName)
+				}else {
+					shopName = mediator.GetShopName(shopHref)
 				}
 			}
 
 		}
 
-		key := getMd5(shopName + ss[1])
-		//		fmt.Println(shopName, ss[1], p, sales, ss[3], ss[5])
 		newGood := model.NewJdGood(shopName, ss[1], p, sales, ss[3], ss[5])
 		newGood.SetPriceDiff(standardPirce, p)
-		m[key] = newGood
+		m[ss[5]] = newGood
 	}
 	return m
 }

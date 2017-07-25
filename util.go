@@ -29,7 +29,7 @@ func loadTargetModel(brands map[string][]string) map[string]*model.GoodPrices {
 	for _, v := range brands {
 		ms = append(ms, v...)
 	}
-	return redisDAO.ReadGoodPrices(ms)
+	return redisDAO.ReadStandardPrice(ms)
 }
 
 func getMd5(s string) string {

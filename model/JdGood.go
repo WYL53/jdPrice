@@ -26,6 +26,20 @@ func NewJdGood(shopName string, name string, price int, sales string, etc string
 	}
 }
 
+func CopyJdGood(src *JdGood) *JdGood {
+	return &JdGood{
+		ShopName:src.ShopName,
+		Name:src.Name,
+		GoodHref:src.GoodHref,
+		Price:src.Price,
+		PriceDiff:src.PriceDiff,
+		Sales:src.Sales,
+		Etc:src.Etc,
+		UpOrDown:src.UpOrDown,
+	}
+
+}
+
 func (good JdGood) ThanOther(other *JdGood) (diff int) {
 	return (good.Price - other.Price) * 100 / other.Price
 }

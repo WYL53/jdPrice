@@ -1,4 +1,4 @@
 {
-	"port":6666,
+	"port":6667,
 	"frequencyOfDay":144
 }

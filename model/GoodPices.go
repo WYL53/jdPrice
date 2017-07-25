@@ -4,6 +4,7 @@ import (
 	"strconv"
 )
 
+//型号的参考价
 type GoodPrices struct {
 	Name          string
 	StandardPrice int
@@ -29,5 +30,14 @@ func NewGoodPrices2(n, sp, minP, maxP string) *GoodPrices {
 		StandardPrice: standardPrice,
 		MinPrice:      minPrice,
 		MaxPrice:      maxPrice,
+	}
+}
+
+func CopyGoodPrices(src *GoodPrices) *GoodPrices {
+	return &GoodPrices{
+		Name:src.Name,
+		StandardPrice:src.StandardPrice,
+		MinPrice:src.MinPrice,
+		MaxPrice:src.MaxPrice,
 	}
 }
