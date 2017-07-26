@@ -40,7 +40,7 @@ const TPL_SHOW_PAGE = `<html>
 	var obj = document.getElementById("tbl");
 	var rowNum = obj.rows.length;
 	for(var i=0;i<rowNum;i++){
-			obj.rows[i+1].cells[0].innerHTML = "<td>" + (i+1).toString() +"</td>"
+		obj.rows[i+1].cells[0].innerHTML = "<td>" + (i+1).toString() +"</td>"
 	}
 
 </script>

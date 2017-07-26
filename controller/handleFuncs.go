@@ -99,7 +99,7 @@ func UpdatePriceServer(w http.ResponseWriter, req *http.Request) {
 }
 
 //价格显示
-func HomeServer(w http.ResponseWriter, req *http.Request) {
+func modelPriceShow(w http.ResponseWriter, req *http.Request) {
 	modelName := trimSpace(req.URL.Query().Get("model"))
 	t := template.New("template")      //创建一个模板
 	t, _ = t.Parse(view.TPL_SHOW_PAGE) //解析模板文件
@@ -116,10 +116,8 @@ func HomeServer(w http.ResponseWriter, req *http.Request) {
 }
 
 //价格走势
-func PriceServer(w http.ResponseWriter, req *http.Request) {
+func priceChange(w http.ResponseWriter, req *http.Request) {
 	id := req.URL.Query().Get("id")
-	//	model := req.URL.Query().Get("model")
-	//	fmt.Println(model)
 
 	thisMonthPrefix := req.URL.Query().Get("month")
 	if len(thisMonthPrefix) < 7 {

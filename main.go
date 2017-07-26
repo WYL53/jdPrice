@@ -16,23 +16,9 @@ import (
 	"jdPrice/mediator"
 )
 
-const (
-	HISTORY_PATH      = "history"
-	SHOP_INFO_PATH    = HISTORY_PATH + "/shopInfo.txt"
-	TARGET_SHOPS_PATH = HISTORY_PATH + "/targetShops.txt"
-)
-
-//var lastData map[string]*JdGood
 
 
 func main() {
-	brands := loadBrands()
-	mediator.UpdateBrand2Model(brands)
-	mediator.UpdateModelsStandardPrice(loadTargetModel(brands))
-	mediator.UpdatShopId2Name(loadShopId())
-	//	fmt.Println("TargetModels:", controller.BrandModelMap)
-	//	fmt.Println("TargetModels:", controller.TargetModels)
-	//	fmt.Println("shopIdData:", shopIdData)
 	go loop(int(conf.FrequencyOfDay))
 	//	fmt.Println("start http server")
 	go controller.StartHttpServer(int(conf.Port))
@@ -109,14 +95,17 @@ func formatData(data *bytes.Buffer, standardPirce, priceMin int, priceMax int) m
 		shopHref := ss[4]
 		if shopHref != "undefined" {
 			cacheShopName := mediator.GetShopName(shopHref)
-			if cacheShopName != shopName{
-				if cacheShopName == "京东自营"{
-					mediator.UpdateShopName(shopHref,shopName)
-				}else {
-					shopName = mediator.GetShopName(shopHref)
+			if cacheShopName == ""{
+				mediator.UpdateShopName(shopHref,shopName)
+			}else {
+				if cacheShopName != shopName {
+					if cacheShopName == "京东自营" {
+						mediator.UpdateShopName(shopHref, shopName)
+					} else {
+						shopName = mediator.GetShopName(shopHref)
+					}
 				}
 			}
-
 		}
 
 		newGood := model.NewJdGood(shopName, ss[1], p, sales, ss[3], ss[5])
@@ -124,4 +113,15 @@ func formatData(data *bytes.Buffer, standardPirce, priceMin int, priceMax int) m
 		m[ss[5]] = newGood
 	}
 	return m
+}
+
+
+func isRange(n, min, max int) bool {
+	if n < min {
+		return false
+	}
+	if n > max {
+		return false
+	}
+	return true
 }

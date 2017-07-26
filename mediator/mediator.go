@@ -23,6 +23,7 @@ var modelsStandardPriceLock sync.RWMutex
 var currentData map[string]map[string]*model.JdGood = make(map[string]map[string]*model.JdGood)
 var currentDataLock sync.RWMutex
 
+//品牌
 func UpdateBrand2Model(m map[string][]string)  {
 	brand2ModelLock.Lock()
 	defer  brand2ModelLock.Unlock()
@@ -50,6 +51,10 @@ func SetBrandModelItem(brand string,modelName, standardPrice, minPrice, maxPrice
 		models := make([]string, 1)
 		models[0] = modelName
 		brand2Model[brand] = models
+		err := redisDAO.WriteModel(brand,modelName)
+		if err != nil{
+			return err
+		}
 		return SetModelsStandardPrice(modelName, standardPrice, minPrice, maxPrice)
 	}
 	for _, v := range brand2Model[brand] {
@@ -160,6 +165,7 @@ func UpdateShopName(id,name string)  {
 	redisDAO.WiretShopId(id, name)
 }
 
+//当前价格
 func UpdateCurrentData(modelName string,prices map[string]*model.JdGood)  {
 	currentDataLock.Lock()
 	currentData[modelName] = prices
@@ -176,6 +182,7 @@ func CopyModelCurrentData(modelName string) map[string]*model.JdGood {
 		for k,v := range data{
 			m[k] = model.CopyJdGood(v)
 		}
+		return m
 	}
 	return nil
 }

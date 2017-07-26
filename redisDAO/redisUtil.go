@@ -143,7 +143,7 @@ func WiretShopId(id, shopName string) {
 }
 
 //id -> 店名
-func ReadShopIds() map[string]string {
+func ReadAllShopName() (map[string]string,error) {
 	conn := RedisClient.Get()
 	defer conn.Close()
 
@@ -157,12 +157,10 @@ func ReadShopIds() map[string]string {
 				value := string(objs[i+1].([]uint8))
 				ret[key] = value
 			}
-			return ret
+			return ret,nil
 		}
-	} else {
-		fmt.Println(err)
 	}
-	return nil
+	return nil,err
 }
 
 //参考价
