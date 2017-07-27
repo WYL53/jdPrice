@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -14,20 +13,23 @@ import (
 	"jdPrice/controller"
 	"jdPrice/model"
 	"jdPrice/mediator"
+	"jdPrice/log"
+	"math/rand"
 )
 
 
 
 func main() {
+	defer log.Clear()
 	go loop(int(conf.FrequencyOfDay))
-	//	fmt.Println("start http server")
+	//	log.Println("start http server")
 	go controller.StartHttpServer(int(conf.Port))
 	exitC := make(chan os.Signal,1)
 	signal.Notify(exitC,syscall.SIGINT,syscall.SIGTERM)
 	for  {
 		select {
 		case <-exitC:
-			fmt.Println("app exit!")
+			log.Println("app exit!")
 			os.Exit(0)
 		}
 	}
@@ -46,24 +48,25 @@ func loop(frequencyOfDay int) {
 }
 
 //获取一次数据
-func startMission(model string, standardPirce int, priceMin int, priceMax int) {
-	fmt.Printf("%s %s获取数据。\n", time.Now().Format("2006-01-02 15:04"), model)
-	cmdResp := execCmd("phantomjs", "jd_spider.js", model)
+func startMission(modelName string, standardPirce int, priceMin int, priceMax int) {
+	time.Sleep(time.Second *time.Duration(rand.Intn(30)))
+	log.Printf("%s开始获取数据。\n", modelName)
+	cmdResp := execCmd("phantomjs", "jd_spider.js", modelName)
 	if cmdResp == nil{
-		fmt.Printf("%s %s获取数据超时。\n", time.Now().Format("2006-01-02 15:04"), model)
+		log.Printf("%s获取数据超时。\n", modelName)
 		return
 	}
-	data := formatData(cmdResp, standardPirce, priceMin, priceMax)
-	//	fmt.Println(data)
+	data := formatData(modelName,cmdResp, standardPirce, priceMin, priceMax)
+	//	log.Println(data)
 	if data != nil {
-		mediator.UpdateCurrentData(model,data)
+		mediator.UpdateCurrentData(modelName,data)
 	}
-	fmt.Printf("%s %s获取数据完毕。\n", time.Now().Format("2006-01-02 15:04"), model)
+	log.Printf("%s获取数据完毕。\n", modelName)
 }
 
 // 店名:商品名:价格评论:其他:店铺href：商品href
 //商品href 作为返回的map的key
-func formatData(data *bytes.Buffer, standardPirce, priceMin int, priceMax int) map[string]*model.JdGood {
+func formatData(modelName string,data *bytes.Buffer, standardPrice, priceMin int, priceMax int) map[string]*model.JdGood {
 	m := make(map[string]*model.JdGood)
 	reader := bufio.NewReader(data)
 	for {
@@ -73,7 +76,7 @@ func formatData(data *bytes.Buffer, standardPirce, priceMin int, priceMax int) m
 		}
 		ss := strings.Split(string(line), ":")
 		if len(ss) < 6 {
-			fmt.Println("line error :",string(line))
+			log.Println("line error :",string(line))
 			continue
 		}
 
@@ -102,14 +105,18 @@ func formatData(data *bytes.Buffer, standardPirce, priceMin int, priceMax int) m
 					if cacheShopName == "京东自营" {
 						mediator.UpdateShopName(shopHref, shopName)
 					} else {
-						shopName = mediator.GetShopName(shopHref)
+						shopName = cacheShopName
 					}
 				}
 			}
+		}else {
+			//shopName = mediator.GetShopNameByModelAndGoodid(modelName,shopHref)
 		}
-
+		if(shopName == "京东自营"){
+			log.Println("debug:",string(line))
+		}
 		newGood := model.NewJdGood(shopName, ss[1], p, sales, ss[3], ss[5])
-		newGood.SetPriceDiff(standardPirce, p)
+		newGood.SetPriceDiff(standardPrice, p)
 		m[ss[5]] = newGood
 	}
 	return m

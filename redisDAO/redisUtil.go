@@ -8,6 +8,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 
 	"jdPrice/model"
+	"jdPrice/log"
 )
 
 const (
@@ -48,7 +49,7 @@ func WritePrice(m map[string]*model.JdGood) {
 		key = fmt.Sprintf(RedisPriceZSetFormat, key)
 		_, err := conn.Do("ZADD", key, 1, s)
 		if err != nil {
-			fmt.Println("ZADD err:", err.Error())
+			log.Println("ZADD err:", err.Error())
 			continue
 		}
 	}
@@ -69,7 +70,7 @@ func ReadPrice(goodId string) []string {
 			}
 		}
 	} else {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	return ret
 }
@@ -104,7 +105,7 @@ func ReadModels(brands []string) map[string][]string {
 		key := fmt.Sprintf(RedisTargetModelSet, brand)
 		reply, err := conn.Do("SMEMBERS", key)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			continue
 		}
 		objs, ok := reply.([]interface{})
@@ -132,14 +133,12 @@ func RemoveModel(brand, model string)  {
 }
 
 //id -> 店名
-func WiretShopId(id, shopName string) {
+func WiretShopId(id, shopName string) error {
 	conn := RedisClient.Get()
 	defer conn.Close()
 
 	_, err := conn.Do("HSET", RedisShopIdTable, id, shopName)
-	if err != nil {
-		fmt.Println(err)
-	}
+	return err
 }
 
 //id -> 店名
@@ -207,7 +206,7 @@ func getKeys(parrent string) []string {
 
 	reply, err := conn.Do("KEYS", parrent)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return nil
 	}
 	lines, err := convStringArray(reply)

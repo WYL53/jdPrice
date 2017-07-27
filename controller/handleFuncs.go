@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"jdPrice/redisDAO"
 	"jdPrice/view"
 	"jdPrice/mediator"
+	"jdPrice/log"
 )
 
 func IndexServer(w http.ResponseWriter, req *http.Request) {
@@ -44,7 +44,7 @@ func AddModelServer(w http.ResponseWriter, req *http.Request) {
 	if prices := mediator.GetModelsStandardPrice(modelName); prices == nil {
 		err:= mediator.SetBrandModelItem(brand,modelName,standardPrice, minPrice, maxPrice)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		} else {
 			if err == nil {
 				w.Write([]byte("添加成功"))
@@ -85,7 +85,7 @@ func UpdatePriceServer(w http.ResponseWriter, req *http.Request) {
 					w.Write([]byte("价格更新成功"))
 					return
 				}
-				fmt.Println("价格更新失败", err)
+				log.Println("价格更新失败", err)
 				w.Write([]byte("价格更新失败"))
 				return
 			//}
@@ -128,7 +128,7 @@ func priceChange(w http.ResponseWriter, req *http.Request) {
 	prices := make([]int, 0)
 	times := make([]string, 0)
 	contents := redisDAO.ReadPrice(id)
-	//	fmt.Println(contents)
+	//	log.Println(contents)
 	for _, line := range contents {
 
 		if !strings.HasPrefix(line, thisMonthPrefix) {
@@ -151,7 +151,7 @@ func priceChange(w http.ResponseWriter, req *http.Request) {
 	}
 	times = append(times, lastTime)
 	prices = append(prices, lastPrice)
-	//	fmt.Println(times, prices)
+	//	log.Println(times, prices)
 	t := template.New("template")            //创建一个模板
 	t, _ = t.Parse(view.TPL_PRICE_LINE_PAGE) //解析模板文件
 	data := struct {

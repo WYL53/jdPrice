@@ -157,12 +157,12 @@ func GetShopName(id string) string {
 }
 
 
-func UpdateShopName(id,name string)  {
+func UpdateShopName(shopId,name string)  {
 	shopId2NameLock.Lock()
-	shopId2Name[id] = name
+	shopId2Name[shopId] = name
 	shopId2NameLock.Unlock()
 
-	redisDAO.WiretShopId(id, name)
+	redisDAO.WiretShopId(shopId, name)
 }
 
 //当前价格
@@ -185,4 +185,14 @@ func CopyModelCurrentData(modelName string) map[string]*model.JdGood {
 		return m
 	}
 	return nil
+}
+
+//返回shopName,shopHref
+func GetShopNameByModelAndGoodid(modelName,goodId string)string{
+	currentDataLock.RLock()
+	currentDataLock.RUnlock()
+	if prices,ok := currentData[modelName];ok{
+		return prices[goodId].ShopName
+	}
+	return ""
 }

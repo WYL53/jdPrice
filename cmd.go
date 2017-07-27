@@ -5,7 +5,8 @@ import (
 	"bytes"
 	"os/exec"
 	"time"
-	"fmt"
+
+	"jdPrice/log"
 )
 
 func execCmd(command string, args ...string) *bytes.Buffer {
@@ -15,12 +16,12 @@ func execCmd(command string, args ...string) *bytes.Buffer {
 	cmd.Stdout = retBuf
 	cmd.Stderr = retBuf
 	if err := cmd.Start();err != nil{
-		fmt.Println("cmd.Start error:",err)
+		log.Println("cmd.Start error:",err)
 		return nil
 	}
 	go timeout2Kill(cmd,60,args[1])
 	if err := cmd.Wait();err != nil{
-		fmt.Println("cmd.Wait error:",err)
+		log.Println("cmd.Wait error:",err)
 		return nil
 	}
 	return ret
@@ -30,7 +31,7 @@ func execCmd(command string, args ...string) *bytes.Buffer {
 func timeout2Kill(cmd *exec.Cmd, timeAfter uint,modelName string)  {
 	defer func() {
 		if err := recover();err != nil{
-			fmt.Println("kill cmd err:",err)
+			log.Println("kill cmd err:",err)
 		}
 	}()
 
@@ -39,7 +40,7 @@ func timeout2Kill(cmd *exec.Cmd, timeAfter uint,modelName string)  {
 		timer.Stop()
 		if cmd.Process != nil && cmd.ProcessState == nil{
 			cmd.Process.Kill()
-			fmt.Printf("查询型号【%s】的 cmd 被终结\n",modelName)
+			log.Printf("查询型号【%s】的 cmd 被终结\n",modelName)
 		}
 	})
 }

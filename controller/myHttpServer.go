@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"net/http"
+	
+	"jdPrice/log"
 )
 
 type recoverHttpServer struct {
@@ -19,7 +21,7 @@ func newRecoverHttpServer(next http.Handler) *recoverHttpServer {
 func (this *recoverHttpServer) ServeHTTP(w http.ResponseWriter, r *http.Request)  {
 	defer func() {
 		if err := recover();err != nil{
-			fmt.Printf("handle request error:%v",err)
+			log.Printf("handle request error:%v",err)
 		}
 	}()
 	this.next.ServeHTTP(w,r)
@@ -27,7 +29,7 @@ func (this *recoverHttpServer) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 func StartHttpServer(prot int) {
 	addr := fmt.Sprintf("0.0.0.0:%d", prot)
-	fmt.Println("http server listen address:", addr)
+	log.Println("http server listen address:", addr)
 	http.HandleFunc("/", IndexServer)
 	http.HandleFunc("/addModel", AddModelServer)
 	http.HandleFunc("/delModel", DelModelServer)
@@ -38,7 +40,7 @@ func StartHttpServer(prot int) {
 	server := newRecoverHttpServer(http.DefaultServeMux)
 	err := http.ListenAndServe(addr, server)
 	if err != nil {
-		fmt.Printf("start http server error:%s", err.Error())
+		log.Printf("start http server error:%s", err.Error())
 		os.Exit(1)
 	}
 }
