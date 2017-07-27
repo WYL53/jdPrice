@@ -23,6 +23,8 @@ var modelsStandardPriceLock sync.RWMutex
 var currentData map[string]map[string]*model.JdGood = make(map[string]map[string]*model.JdGood)
 var currentDataLock sync.RWMutex
 
+var ipPool []string
+
 //品牌
 func UpdateBrand2Model(m map[string][]string)  {
 	brand2ModelLock.Lock()
@@ -156,6 +158,11 @@ func GetShopName(id string) string {
 	return ""
 }
 
+func GetShopInfoByGoodId(goodId string) ( string,  string, error) {
+
+	return redisDAO.GetShopInfos(goodId)
+}
+
 
 func UpdateShopName(shopId,name string)  {
 	shopId2NameLock.Lock()
@@ -195,4 +202,8 @@ func GetShopNameByModelAndGoodid(modelName,goodId string)string{
 		return prices[goodId].ShopName
 	}
 	return ""
+}
+
+func GetIpPool() ([]string,error) {
+	return redisDAO.GetIps()
 }

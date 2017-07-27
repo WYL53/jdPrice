@@ -2,12 +2,12 @@ var url = 'http://search.jd.com/Search?enc=utf-8&keyword='
 var page = require('webpage').create();
 var system = require('system');
 
-url = url + system.args[1];
-
 if (system.args.length === 1) {
-  console.log('Usage: jd_spider.js <some model>');
+  console.log('Usage: jd_spider.js <some modelName>');
   phantom.exit();
 }
+
+url = url + system.args[1];
 
 page.injectJs("jquery-1.6.1.min.js");
 

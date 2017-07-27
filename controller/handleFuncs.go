@@ -12,6 +12,8 @@ import (
 	"jdPrice/view"
 	"jdPrice/mediator"
 	"jdPrice/log"
+	"encoding/json"
+	"io/ioutil"
 )
 
 func IndexServer(w http.ResponseWriter, req *http.Request) {
@@ -167,3 +169,37 @@ func priceChange(w http.ResponseWriter, req *http.Request) {
 func trimSpace(s string) string {
 	return strings.TrimSpace(s)
 }
+//
+//func outputModels(w http.ResponseWriter, req *http.Request)  {
+//	w.Header().Set("Content-Disposition", "attachment; filename=models.json")
+//	models := mediator.CopyBrandModel()
+//	bytes,err := json.Marshal(models)
+//	if err != nil{
+//		log.Println(err)
+//	}
+//	w.Write(bytes)
+//}
+//
+//func inputModels(w http.ResponseWriter, req *http.Request)  {
+//	if req.Method != http.MethodPost{
+//		w.Write([]byte("go away."))
+//		return
+//	}
+//	err := req.ParseForm()
+//	if err != nil{
+//		w.Write([]byte("go away."))
+//		return
+//	}
+//	models,_,err := req.FormFile("models")
+//	if err != nil{
+//		w.Write([]byte("请上传文件."))
+//		return
+//	}
+//	content,_ := ioutil.ReadAll(models)
+//	m := make(map[string][]string)
+//	err = json.Unmarshal(content,&m)
+//	if err != nil{
+//		w.Write([]byte(err))
+//	}
+//	w.Write([]byte("成功"))
+//}

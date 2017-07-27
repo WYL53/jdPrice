@@ -18,6 +18,11 @@ const (
 	RedisShopIdTable          = "shopIdTable"
 	RedisGoodPriceTableFormat = "goodPriceTable_%s"
 	RedisPriceZSetFormat      = "prices_%s"
+
+	//good id -> shop info,hashtable
+	RedisShopInfoFormat = "shopInfo_%s"
+
+	RedisIpPoolName = "ipPool"
 )
 
 var RedisClient *redis.Pool
@@ -134,41 +139,18 @@ func RemoveModel(brand, model string)  {
 
 //id -> 店名
 func WiretShopId(id, shopName string) error {
-	conn := RedisClient.Get()
-	defer conn.Close()
-
-	_, err := conn.Do("HSET", RedisShopIdTable, id, shopName)
-	return err
+	return hashSetValue(RedisShopIdTable, id, shopName)
 }
 
 //id -> 店名
 func ReadAllShopName() (map[string]string,error) {
-	conn := RedisClient.Get()
-	defer conn.Close()
-
-	reply, err := conn.Do("HGETALL", RedisShopIdTable)
-	if err == nil {
-		objs, ok := reply.([]interface{})
-		if ok {
-			ret := make(map[string]string)
-			for i := 0; i < len(objs)-2; i += 2 {
-				key := string(objs[i].([]uint8))
-				value := string(objs[i+1].([]uint8))
-				ret[key] = value
-			}
-			return ret,nil
-		}
-	}
-	return nil,err
+	return hashGetValues(RedisShopIdTable)
 }
 
 //参考价
 func WriteStandardPrice(model, standardPrice, minPrice, maxPrice string) error {
-	conn := RedisClient.Get()
-	defer conn.Close()
 	key := fmt.Sprintf(RedisGoodPriceTableFormat, model)
-	_, err := conn.Do("HMSET", key, "standardPrice", standardPrice, "minPrice", minPrice, "maxPrice", maxPrice)
-	return err
+	return hashSetValue( key, "standardPrice", standardPrice, "minPrice", minPrice, "maxPrice", maxPrice)
 }
 
 func ReadStandardPrice(modelNames []string) map[string]*model.GoodPrices {
@@ -200,6 +182,66 @@ func ReadStandardPrice(modelNames []string) map[string]*model.GoodPrices {
 	return ret
 }
 
+//good id -> shop info
+func SetShopInfo(goodId string, shopName string, shopHref string) error {
+	key := fmt.Sprintf(RedisShopInfoFormat,goodId)
+	return hashSetValue(key,"shopName",shopName,"shopHref",shopHref)
+}
+
+func GetShopInfos(goodId string) (shopName string, shopHref string,err error) {
+	key := fmt.Sprintf(RedisShopInfoFormat,goodId)
+	var m map[string]string
+	m,err = hashGetValues(key)
+	if err != nil{
+		return
+	}
+	shopName = m["shopName"]
+	shopHref = m["shopHref"]
+	return
+}
+
+func GetIps() ([]string,error) {
+	return setGetValues(RedisIpPoolName)
+}
+
+func hashSetValue(key string, pairs ...string) error {
+	conn := RedisClient.Get()
+	defer conn.Close()
+
+	if len(pairs)%2 != 0{
+		return fmt.Errorf("len(pairs)%2 != 0")
+	}
+	args := make([]interface{},len(pairs)+1)
+	args[0] = key
+	for i := range pairs {
+		args[i+1] = pairs[i]
+	}
+	_, err := conn.Do("HMSET", args...)
+	return err
+}
+
+func hashGetValue(key string, args string)(string, error) {
+	conn := RedisClient.Get()
+	defer conn.Close()
+
+	reply, err := conn.Do("HGET", key,args)
+	if err != nil{
+		return "",err
+	}
+	return replyConvString(reply)
+}
+
+func hashGetValues(key string) (map[string]string,error) {
+	conn := RedisClient.Get()
+	defer conn.Close()
+
+	reply, err := conn.Do("HGETALL", key)
+	if err != nil{
+		return nil,err
+	}
+	return replyConvMap(reply)
+}
+
 func getKeys(parrent string) []string {
 	conn := RedisClient.Get()
 	defer conn.Close()
@@ -209,7 +251,7 @@ func getKeys(parrent string) []string {
 		log.Println(err)
 		return nil
 	}
-	lines, err := convStringArray(reply)
+	lines, err := replyConvStringArray(reply)
 	return lines
 }
 
@@ -220,7 +262,17 @@ func setAddValue(setName, value string) error {
 	return err
 }
 
-func convStringArray(reply interface{}) ([]string, error) {
+func setGetValues(setName string) ([]string,error) {
+	conn := RedisClient.Get()
+	defer conn.Close()
+	reply, err := conn.Do("SMEMBERS ", setName)
+	if err != nil{
+		return nil,err
+	}
+	return replyConvStringArray(reply)
+}
+
+func replyConvStringArray(reply interface{}) ([]string, error) {
 	objs, ok := reply.([]interface{})
 	if !ok {
 		return nil, fmt.Errorf("not array")
@@ -230,4 +282,31 @@ func convStringArray(reply interface{}) ([]string, error) {
 		lines[i] = string(v.([]uint8))
 	}
 	return lines, nil
+}
+
+func replyConvString(reply interface{}) (string, error) {
+	objs, ok := reply.([]uint8)
+	if !ok {
+		return "", fmt.Errorf("not []uint8")
+	}
+	return string(objs), nil
+}
+
+func replyConvMap(reply interface{}) (map[string]string, error) {
+	objs, ok := reply.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("not array")
+	}
+	if len(objs)%2 != 0{
+		return nil,fmt.Errorf("len(objs)%2 != 0")
+	}
+	m := make(map[string]string)
+	for i:=0;i<len(objs);i+=2{
+		k := objs[i]
+		v := objs[i+1]
+		key := string(k.([]uint8))
+		value := string(v.([]uint8))
+		m[key] = value
+	}
+	return m, nil
 }
